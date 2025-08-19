@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,6 +20,10 @@ export function ContactSection({ language }: ContactSectionProps) {
     message: "",
   })
 
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
   const content = {
     pt: {
       title: "Entre em Contacto",
@@ -31,6 +34,8 @@ export function ContactSection({ language }: ContactSectionProps) {
         phone: "Telefone",
         message: "Mensagem",
         submit: "Enviar Mensagem",
+        success: "Mensagem enviada com sucesso!",
+        error: "Erro ao enviar a mensagem, tente novamente.",
       },
       contact: {
         title: "Informações de Contacto",
@@ -48,6 +53,8 @@ export function ContactSection({ language }: ContactSectionProps) {
         phone: "Phone",
         message: "Message",
         submit: "Send Message",
+        success: "Message sent successfully!",
+        error: "Error sending message, please try again.",
       },
       contact: {
         title: "Contact Information",
@@ -58,11 +65,33 @@ export function ContactSection({ language }: ContactSectionProps) {
     },
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const message = `Nome: ${formData.name}\nE-mail: ${formData.email}\nTelefone: ${formData.phone}\nMensagem: ${formData.message}`
-    const whatsappUrl = `https://wa.me/244955791520?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, "_blank")
+    setLoading(true)
+    setSuccess(null)
+    setError(null)
+
+    try {
+      const response = await fetch("https://api-kwanzasites.onrender.com/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccess(content[language].form.success)
+        setFormData({ name: "", email: "", phone: "", message: "" })
+      } else {
+        setError(data.message || content[language].form.error)
+      }
+    } catch (err) {
+      console.error(err)
+      setError(content[language].form.error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -116,9 +145,11 @@ export function ContactSection({ language }: ContactSectionProps) {
                   onChange={handleChange}
                   required
                 />
-                <Button type="submit" className="w-full">
-                  {content[language].form.submit}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Enviando..." : content[language].form.submit}
                 </Button>
+                {success && <p className="text-green-600 mt-2">{success}</p>}
+                {error && <p className="text-red-600 mt-2">{error}</p>}
               </form>
             </CardContent>
           </Card>
